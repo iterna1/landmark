@@ -1,220 +1,148 @@
-import request
 import pygame
-import os
 
-from math import pow, cos, radians
 from widgets import *
+from map import Map, MapSpot
 
 
-class Map(pygame.sprite.Sprite):
-    dlon = 0.02
-    dlat = 0.008
-    k = 0.0000428
+def update_screen():
+    screen.fill((0, 51, 255))
+    pygame.draw.rect(screen, (255, 204, 0), (0, 0, 600, 55))
 
-    def __init__(self, ll=(0, 0), zoom=10, type='map'):
-        super().__init__()
-
-        # default params
-        self.lon, self.lat = ll
-        self.zoom = zoom
-        self.type = type
-        self.spot = None
-
-        # sprite attrs
-        self.image = pygame.Surface((600, 450))
-        self.update_image()
-
-        self.rect = self.image.get_rect()
-        self.rect.x = 0
-        self.rect.y = 0
-
-    def set_spot(self, spot, focus=False):
-        self.spot = spot
-        if focus:
-            self.lon, self.lat = spot.point
-
-    def update_image(self):
-        # request params
-        params = {'ll': '%s,%s' % (self.lon, self.lat),
-                  'z': self.zoom,
-                  'l': self.type}
-        if self.spot:
-            ll = ','.join(map(str, self.spot.point))
-            params['pt'] = '%s,pm2wtm' % ll
-
-        # request
-        try:
-            data = request.static_maps(**params)
-        except request.BadRequest as br:
-            print(br)
-            return
-
-        # setting map image
-        ext = '.jpg' if self.type == 'sat' else '.png'
-        with open('map' + ext, 'wb') as file:
-            file.write(data)
-
-        self.image = pygame.image.load('map' + ext)
-
-    def xy_into_ll(self, pos):
-        dy = 225 - pos[1]
-        dx = pos[0] - 300
-        lon = self.lon + dx * Map.k * pow(2, 15 - self.zoom)
-        lat = self.lat + dy * Map.k * cos(radians(self.lat)) * pow(2, 15 - self.zoom)
-
-        return lon, lat
-
-    def scale(self, dz):
-        if 0 <= self.zoom + dz <= 17:
-            self.zoom += dz
-
-    def update(self, event):
-        # event handler
-        if event.key == pygame.K_PAGEUP:
-            self.scale(1)
-        elif event.key == pygame.K_PAGEDOWN:
-            self.scale(-1)
-        elif event.key == pygame.K_UP:
-            self.lat += Map.dlat * pow(2, 15 - self.zoom)
-        elif event.key == pygame.K_DOWN:
-            self.lat -= Map.dlat * pow(2, 15 - self.zoom)
-        elif event.key == pygame.K_RIGHT:
-            self.lon += Map.dlon * pow(2, 15 - self.zoom)
-        elif event.key == pygame.K_LEFT:
-            self.lon -= Map.dlon * pow(2, 15 - self.zoom)
-        elif event.key == pygame.K_F1:
-            self.type = 'map'
-        elif event.key == pygame.K_F2:
-            self.type = 'sat'
-        elif event.key == pygame.K_F3:
-            self.type = 'skl'
-        elif event.key == pygame.K_F4:
-            self.type = 'trf'
-
-        if self.lon > 180:
-            self.lon -= 360
-        elif self.lon < -180:
-            self.lon += 360
-        if self.lat > 90:
-            self.lat -= 180
-        elif self.lat < -90:
-            self.lat += 180
-
-        # update map image
-        self.update_image()
+    pygame.draw.line(screen, (184, 130, 31), (95, 0), (95, 55), 5)
+    pygame.draw.line(screen, (184, 130, 31), (180, 0), (180, 55), 5)
+    pygame.draw.line(screen, (184, 130, 31), (285, 0), (285, 55), 5)
+    pygame.draw.line(screen, (184, 130, 31), (380, 0), (380, 55), 5)
+    pygame.draw.line(screen, (184, 130, 31), (500, 0), (500, 55), 5)
 
 
-class MapSpot:
-    def __init__(self, point=None):
-        self.info = dict()
-        self.point = point
+def mainloop():
+    run = True
+    while run:
+        events = pygame.event.get()
+        for event in events:
+            if event.type == pygame.QUIT:
+                run = False
+            elif event.type == pygame.KEYDOWN and not search_field.active:
+                mp.update(event)
 
-        self.organization = None
-        self.toponym = None
-        self.address = None
-        self.postcode = None
+        buttons = pygame.mouse.get_pressed()
+        keys = pygame.key.get_pressed()
 
-        if point:
-            self.find_toponym(geocode=','.join(map(str, self.point)))
-            self.find_organization(text=','.join(map(str, self.point)))
+        interface.update(events, buttons, keys)
 
-    def find_organization(self, **kwargs):
-        try:
-            self.organization = request.geosearch(**kwargs)[0]
-        except IndexError:
-            print('No organizations found')
-        else:
-            if not self.point:
-                self.point = self.organization['geometry']['coordinates']
-            if not self.address:
-                self.address = self.organization['properties']['CompanyMetaData'].get('address')
+        update_screen()
+        mp.draw(screen)
+        interface.draw(screen)
 
-    def find_toponym(self, **kwargs):
-        try:
-            self.toponym = request.geocoder(**kwargs)[0]
-        except IndexError:
-            print('No toponyms found')
-        else:
-            if not self.point:
-                self.point = [float(i) for i in self.toponym['Point']['pos'].split()]
-            if not self.address:
-                self.address = self.toponym['metaDataProperty']['GeocoderMetaData'].get('Address')['formatted']
-            if not self.postcode:
-                self.postcode = self.toponym['metaDataProperty']['GeocoderMetaData'].get('Address').get('postal_code')
+        pygame.display.flip()
+
+        clock.tick(20)
+
+    mp.sprite.remove_files()
+    pygame.quit()
 
 
-pygame.init()
-clock = pygame.time.Clock()
-screen = pygame.display.set_mode((600, 560))
-screen.fill((0, 51, 255))
-pygame.draw.rect(screen, (255, 204, 0), (0, 0, 600, 55))
+if __name__ == '__main__':
+    pygame.init()
+    clock = pygame.time.Clock()
+    screen = pygame.display.set_mode((600, 560))
+    update_screen()
 
-# widget interface
-interface = PInterface()
+    # widget interface
+    interface = PInterface()
 
-# search field
-search_field = PLineEdit(bg_color=(0, 0, 0), rect=(490, 35), interface=interface)
-search_field.set_font('data/font.ttf', 22)
-search_field.set_color((255, 204, 0))
-search_field.set_margin(10, 8)
-search_field.move(10, 515)
-search_field.update()
+    # search field
+    search_field = PLineEdit(bg_color=(0, 0, 0), rect=(490, 35), interface=interface)
+    search_field.set_font('data/font.ttf', 20)
+    search_field.set_color((255, 204, 0))
+    search_field.set_margin(10, 8)
+    search_field.move(10, 515)
+    search_field.update()
 
-# search button
-search_button = PButton('S', bg_color=(255, 204, 0), rect=(35, 35), interface=interface)
-search_button.set_font('data/font.ttf', 22)
-search_button.set_color((255, 0, 51))
-search_button.move(510, 515)
-search_button.set_margin(10, 8)
-search_button.update()
+    # search button
+    search_button = PButton('Find', bg_color=(255, 204, 0), rect=(80, 35), interface=interface)
+    search_button.set_font('data/font.ttf', 22)
+    search_button.move(510, 515)
+    search_button.set_margin(12, 8)
+    search_button.update()
 
-# reset button
-reset_button = PButton('R', bg_color=(255, 0, 51), rect=(35, 35), interface=interface)
-reset_button.set_font('data/font.ttf', 22)
-reset_button.set_color((255, 204, 0))
-reset_button.move(555, 515)
-reset_button.set_margin(10, 8)
-reset_button.update()
+    # help button
+    help_button = PButton('Help', bg_color=(0, 51, 255), rect=(71, 35), interface=interface)
+    help_button.set_font('data/font.ttf', 22)
+    help_button.set_color((255, 204, 0))
+    help_button.set_margin(8, 8)
+    help_button.move(10, 10)
+    help_button.update()
 
-# help button
-help_button = PButton('Help', bg_color=(204, 153, 0), rect=(75, 35), interface=interface)
-help_button.set_font('data/font.ttf', 22)
-help_button.set_color((27, 27, 0))
-help_button.set_margin(10, 8)
-help_button.move(10, 10)
-help_button.update()
+    # label for input mode switcher
+    im_label = PLabel('Im:', rect=(35, 35), bg_color=(255, 204, 0), interface=interface)
+    im_label.set_font('data/font.ttf', 22)
+    im_label.set_margin(0, 8)
+    im_label.move(110, 10)
+    im_label.update()
 
+    # input mode switcher
+    images = [pygame.transform.scale(pygame.image.load(i).convert_alpha(), (40, 40))
+              for i in ('data/im_1.png', 'data/im_2.png')]
+    im_switcher = PCustomCheckbox(images, interface=interface)
+    im_switcher.move(140, 10)
+    im_switcher.update()
 
-mp = pygame.sprite.GroupSingle(sprite=Map())
-mp.sprite.rect.y = 55
+    # label for output mode switcher
+    om_label = PLabel('Om:', rect=(40, 35), bg_color=(255, 204, 0), interface=interface)
+    om_label.set_font('data/font.ttf', 22)
+    om_label.set_margin(0, 8)
+    om_label.move(195, 10)
+    om_label.update()
 
-run = True
-while run:
-    events = pygame.event.get()
-    for event in events:
-        if event.type == pygame.QUIT:
-            run = False
-        elif event.type == pygame.KEYDOWN and not search_field.active:
-            mp.update(event)
+    # output mode switcher
+    images = [pygame.transform.scale(pygame.image.load(i).convert_alpha(), (40, 40))
+              for i in ('data/om_1.png', 'data/om_2.png')]
+    om_switcher = PCustomCheckbox(images, interface=interface)
+    om_switcher.move(235, 10)
+    om_switcher.update()
 
-    buttons = pygame.mouse.get_pressed()
-    keys = pygame.key.get_pressed()
+    # label for information type switcher
+    irm_label = PLabel('IT:', rect=(35, 35), bg_color=(255, 204, 0), interface=interface)
+    irm_label.set_font('data/font.ttf', 22)
+    irm_label.set_margin(0, 8)
+    irm_label.move(300, 10)
+    irm_label.update()
 
-    interface.update(events, buttons, keys)
+    # information type switcher
+    font = pygame.font.Font('data/font.ttf', 30)
+    images = [font.render('A', True, (0, 51, 255)), font.render('O', True, (0, 51, 255))]
+    om_switcher = PCustomCheckbox(images, interface=interface)
+    om_switcher.move(345, 15)
+    om_switcher.update()
 
-    mp.draw(screen)
-    interface.draw(screen)
+    # reset button
+    reset_button = PButton('Re', rect=(40, 35), bg_color=(255, 51, 0), interface=interface)
+    reset_button.set_font('data/font.ttf', 20)
+    reset_button.set_margin(6, 8)
+    reset_button.set_color((0, 51, 255))
+    reset_button.move(395, 10)
+    reset_button.update()
 
-    pygame.display.flip()
+    # home button
+    home_button = PButton('Ho', rect=(40, 35), bg_color=(0, 255, 0), interface=interface)
+    home_button.set_font('data/font.ttf', 20)
+    home_button.set_margin(6, 8)
+    home_button.set_color((0, 51, 255))
+    home_button.move(445, 10)
+    home_button.update()
 
-    clock.tick(20)
+    # info button
+    info_button = PButton('Info', rect=(75, 35), bg_color=(0, 51, 255), interface=interface)
+    info_button.set_font('data/font.ttf', 20)
+    info_button.set_color((255, 204, 0))
+    info_button.set_margin(12, 8)
+    info_button.move(515, 10)
+    info_button.update()
 
-try:
-    os.remove('map.png')
-except FileNotFoundError:
-    pass
-try:
-    os.remove('map.jpg')
-except FileNotFoundError:
-    pass
-pygame.quit()
+    # create map
+    mp = pygame.sprite.GroupSingle(sprite=Map())
+    mp.sprite.rect.y = 55
+
+    # mainloop
+    mainloop()

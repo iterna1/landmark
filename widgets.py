@@ -9,10 +9,14 @@ class PInterface(pygame.sprite.Group):
                     s.switch()
                     s.update()
             elif s.itself == 'PButton':
+                if event.button != 1:
+                    continue
                 if s.rect.collidepoint(*event.pos):
                     s.on()
                     s.update()
             elif s.itself == 'PCheckbox':
+                if event.button != 1:
+                    continue
                 if s.rect.collidepoint(*event.pos):
                     s.switch()
                     s.update()
@@ -185,11 +189,20 @@ class PButton(PLineWidgetTemplate):
                         (self.margin_x, self.margin_y))
 
 
-class PCheckbox(PLineWidgetTemplate):
+class PCheckbox(pygame.sprite.Sprite):
     itself = 'PCheckbox'
 
     def __init__(self, rect=(15, 15), bg_color=(255, 0, 105), s_color=None, interface=None):
-        super().__init__('', rect=rect, bg_color=bg_color, interface=interface)
+        super().__init__(interface)
+
+        self.bg_color = pygame.Color(*bg_color)
+        self.margin_x = 0
+        self.margin_y = 0
+
+        self.rect = pygame.Rect((0, 0, *rect))
+        self.image = pygame.Surface((self.rect.width, self.rect.height))
+        self.image.fill(self.bg_color)
+
         self.checked = False
 
         if s_color is None:
@@ -197,11 +210,22 @@ class PCheckbox(PLineWidgetTemplate):
         else:
             self.s_color = s_color
 
-    def set_color(self, color):
-        super().set_color(color)
-
     def switch(self):
         self.checked = ~self.checked
+
+    def set_bg_color(self, color):
+        self.bg_color = color
+
+    def set_s_color(self, color):
+        self.s_color = color
+
+    def set_margin(self, x, y):
+        self.margin_x = x
+        self.margin_y = y
+
+    def move(self, x, y):
+        self.rect.x = x
+        self.rect.y = y
 
     def update(self):
         if self.checked:
@@ -209,3 +233,26 @@ class PCheckbox(PLineWidgetTemplate):
         else:
             self.image.fill(self.bg_color)
 
+
+class PCustomCheckbox(pygame.sprite.Sprite):
+    itself = 'PCheckbox'
+
+    def __init__(self, images, interface=None):
+        super().__init__(interface)
+
+        self.images = images
+
+        self.image = self.images[0]
+        self.rect = self.image.get_rect()
+
+        self.checked = False
+
+    def switch(self):
+        self.checked = ~self.checked
+
+    def move(self, x, y):
+        self.rect.x = x
+        self.rect.y = y
+
+    def update(self):
+        self.image = self.images[self.checked]
