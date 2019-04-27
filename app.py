@@ -1,5 +1,7 @@
 import pygame
 
+from webbrowser import open as openweb
+
 from widgets import *
 from map import Map, MapSpot, lonlat_distance
 from speaker import Jarvis
@@ -32,12 +34,12 @@ def mainloop():
                     point = mp.sprite.xy_into_ll(event.pos)
 
                     spot = MapSpot()
-                    ll = '%f,%f' % point
+                    lonlat = '%f,%f' % point
+                    spot.find_toponym(geocode=lonlat, ll=lonlat)
 
                     if it_switcher.checked:
-                        spot.find_organization(text=ll, ll=ll)
-                    else:
-                        spot.find_toponym(geocode=ll, ll=ll)
+                        it_switcher.switch()
+                        it_switcher.update()
 
                     if spot.point and lonlat_distance(spot.point, point) <= 50:
                         mp.sprite.set_spot(spot, focus=False)
@@ -78,7 +80,7 @@ def mainloop():
                 spot = MapSpot()
 
                 if it_switcher.checked:
-                    spot.find_organization(text=request_text)
+                    spot.find_organization(text=request_text, type='biz')
                 else:
                     spot.find_toponym(geocode=request_text)
                 if spot.point:
@@ -115,7 +117,10 @@ def mainloop():
             mp.sprite.update_image()
 
         elif info_button.pressed:
-            pass
+            if mp.sprite.spot:
+                if mp.sprite.spot.toponym:
+                    wiki_request = mp.sprite.spot.toponym['metaDataProperty']['GeocoderMetaData']['text']
+                    openweb('http://localhost:8080/%s' % wiki_request)
 
         clock.tick(20)
 

@@ -128,6 +128,7 @@ class MapSpot:
     def find_toponym(self, **kwargs):
         try:
             self.toponym = request.geocoder(**kwargs)[0]
+
         except IndexError:
             return False
         else:
@@ -138,6 +139,7 @@ class MapSpot:
     def find_organization(self, **kwargs):
         try:
             self.organization = request.geosearch(**kwargs)[0]
+
         except IndexError:
             return False
         else:
