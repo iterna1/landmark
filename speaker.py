@@ -3,11 +3,20 @@ import pyttsx3
 
 
 class Jarvis:
-    def __init__(self, rate=125):
+    def __init__(self, rate=125, lang='en'):
         self.engine = pyttsx3.init()
-        self.recognizer = sr.Recognizer()
-        self.microphone = sr.Microphone()
 
+        if lang == 'ru':
+            self.engine.setProperty(
+                'voice',
+                'HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Speech\\Voices\\Tokens\\TTS_MS_RU-RU_IRINA_11.0'
+            )
+
+        self.recognizer = sr.Recognizer()
+        try:
+            self.microphone = sr.Microphone()
+        except:
+            self.microphone = None
         self.set_rate(rate)
 
         self.said = []
@@ -35,6 +44,8 @@ class Jarvis:
                 del self.said[:250]
 
     def listen(self, anf=True):
+        if not self.microphone:
+            return
         with self.microphone as source:
             if anf:  # ambient noise filter
                 self.recognizer.adjust_for_ambient_noise(source, duration=1)

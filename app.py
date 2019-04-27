@@ -1,7 +1,8 @@
 import pygame
 
 from widgets import *
-from map import Map, MapSpot
+from map import Map, MapSpot, lonlat_distance
+from speaker import Jarvis
 
 
 def update_screen():
@@ -13,6 +14,8 @@ def update_screen():
     pygame.draw.line(screen, (184, 130, 31), (285, 0), (285, 55), 5)
     pygame.draw.line(screen, (184, 130, 31), (380, 0), (380, 55), 5)
     pygame.draw.line(screen, (184, 130, 31), (500, 0), (500, 55), 5)
+    pygame.draw.line(screen, (184, 130, 31), (0, 55), (600, 55), 5)
+    pygame.draw.line(screen, (184, 130, 31), (0, 0), (600, 0), 5)
 
 
 def mainloop():
@@ -24,6 +27,21 @@ def mainloop():
                 run = False
             elif event.type == pygame.KEYDOWN and not search_field.active:
                 mp.update(event)
+            elif event.type == pygame.MOUSEBUTTONDOWN and mp.sprite.rect.collidepoint(event.pos):
+                if event.button == 1:
+                    point = mp.sprite.xy_into_ll(event.pos)
+
+                    spot = MapSpot()
+                    ll = '%f,%f' % point
+
+                    if it_switcher.checked:
+                        spot.find_organization(text=ll, ll=ll)
+                    else:
+                        spot.find_toponym(geocode=ll, ll=ll)
+
+                    if spot.point and lonlat_distance(spot.point, point) <= 50:
+                        mp.sprite.set_spot(spot, focus=False)
+                        mp.sprite.update_image()
 
         buttons = pygame.mouse.get_pressed()
         keys = pygame.key.get_pressed()
@@ -36,6 +54,69 @@ def mainloop():
 
         pygame.display.flip()
 
+        # input mode switcher
+        if im_switcher.checked:
+            interface.add(rt_label)
+            interface.add(record_button)
+
+            search_field.set_text('')
+            interface.remove(search_field)
+            interface.remove(search_button)
+        else:
+            interface.add(search_field)
+            interface.add(search_button)
+
+            rt_label.set_text('')
+            rt_label.update()
+            interface.remove(rt_label)
+            interface.remove(record_button)
+
+        # on search button click
+        if search_button.pressed:
+            request_text = search_field.text
+            if request_text:
+                spot = MapSpot()
+
+                if it_switcher.checked:
+                    spot.find_organization(text=request_text)
+                else:
+                    spot.find_toponym(geocode=request_text)
+                if spot.point:
+                    # setting this spot on map
+                    mp.sprite.set_spot(spot, focus=True)
+                    mp.sprite.update_image()
+
+        # on record button click
+        if record_button.pressed:
+            request_text = jarvis.listen()
+
+            if request_text:
+                spot = MapSpot()
+
+                if it_switcher.checked:
+                    spot.find_organization(text=request_text)
+                else:
+                    spot.find_toponym(geocode=request_text)
+                if spot.point:
+                    rt_label.set_text(request_text)
+                    rt_label.update()
+                    # setting this spot on map
+                    mp.sprite.set_spot(spot, focus=True)
+                    mp.sprite.update_image()
+
+        # on reset button click
+        elif reset_button.pressed:
+            mp.sprite.set_spot(None)
+            mp.sprite.update_image()
+
+        # on home button click
+        elif home_button.pressed:
+            mp.sprite.set_spot(mp.sprite.spot, focus=True)
+            mp.sprite.update_image()
+
+        elif info_button.pressed:
+            pass
+
         clock.tick(20)
 
     mp.sprite.remove_files()
@@ -47,6 +128,9 @@ if __name__ == '__main__':
     clock = pygame.time.Clock()
     screen = pygame.display.set_mode((600, 560))
     update_screen()
+
+    # speaker
+    jarvis = Jarvis()
 
     # widget interface
     interface = PInterface()
@@ -65,6 +149,21 @@ if __name__ == '__main__':
     search_button.move(510, 515)
     search_button.set_margin(12, 8)
     search_button.update()
+
+    # text recognizer label
+    rt_label = PLabel('', bg_color=(0, 0, 0), rect=(490, 35))
+    rt_label.set_font('data/font.ttf', 20)
+    rt_label.set_color((255, 204, 0))
+    rt_label.set_margin(10, 8)
+    rt_label.move(10, 515)
+    rt_label.update()
+
+    # record voice button
+    record_button = PButton('Rec', bg_color=(255, 204, 0), rect=(80, 35))
+    record_button.set_font('data/font.ttf', 24)
+    record_button.move(510, 515)
+    record_button.set_margin(14, 8)
+    record_button.update()
 
     # help button
     help_button = PButton('Help', bg_color=(0, 51, 255), rect=(71, 35), interface=interface)
@@ -103,18 +202,18 @@ if __name__ == '__main__':
     om_switcher.update()
 
     # label for information type switcher
-    irm_label = PLabel('IT:', rect=(35, 35), bg_color=(255, 204, 0), interface=interface)
-    irm_label.set_font('data/font.ttf', 22)
-    irm_label.set_margin(0, 8)
-    irm_label.move(300, 10)
-    irm_label.update()
+    it_label = PLabel('IT:', rect=(35, 35), bg_color=(255, 204, 0), interface=interface)
+    it_label.set_font('data/font.ttf', 22)
+    it_label.set_margin(0, 8)
+    it_label.move(300, 10)
+    it_label.update()
 
     # information type switcher
     font = pygame.font.Font('data/font.ttf', 30)
     images = [font.render('A', True, (0, 51, 255)), font.render('O', True, (0, 51, 255))]
-    om_switcher = PCustomCheckbox(images, interface=interface)
-    om_switcher.move(345, 15)
-    om_switcher.update()
+    it_switcher = PCustomCheckbox(images, interface=interface)
+    it_switcher.move(345, 15)
+    it_switcher.update()
 
     # reset button
     reset_button = PButton('Re', rect=(40, 35), bg_color=(255, 51, 0), interface=interface)

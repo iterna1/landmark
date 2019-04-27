@@ -2,7 +2,7 @@ import request
 import pygame
 from os import remove
 
-from math import pow, cos, radians
+from math import pow, cos, radians, sqrt
 
 
 class Map(pygame.sprite.Sprite):
@@ -29,7 +29,7 @@ class Map(pygame.sprite.Sprite):
 
     def set_spot(self, spot, focus=False):
         self.spot = spot
-        if focus:
+        if focus and self.spot:
             self.lon, self.lat = spot.point
 
     def update_image(self):
@@ -56,7 +56,7 @@ class Map(pygame.sprite.Sprite):
         self.image = pygame.image.load('map' + ext)
 
     def xy_into_ll(self, pos):
-        dy = 225 - pos[1]
+        dy = 280 - pos[1]
         dx = pos[0] - 300
         lon = self.lon + dx * Map.k * pow(2, 15 - self.zoom)
         lat = self.lat + dy * Map.k * cos(radians(self.lat)) * pow(2, 15 - self.zoom)
@@ -64,38 +64,43 @@ class Map(pygame.sprite.Sprite):
         return lon, lat
 
     def scale(self, dz):
-        if 0 <= self.zoom + dz <= 17:
+        if 2 <= self.zoom + dz <= 17:
             self.zoom += dz
 
     def update(self, event):
-        # event handler
-        if event.key == pygame.K_PAGEUP:
-            self.scale(1)
-        elif event.key == pygame.K_PAGEDOWN:
-            self.scale(-1)
-        elif event.key == pygame.K_UP:
-            self.lat += Map.dlat * pow(2, 15 - self.zoom)
-        elif event.key == pygame.K_DOWN:
-            self.lat -= Map.dlat * pow(2, 15 - self.zoom)
-        elif event.key == pygame.K_RIGHT:
-            self.lon += Map.dlon * pow(2, 15 - self.zoom)
-        elif event.key == pygame.K_LEFT:
-            self.lon -= Map.dlon * pow(2, 15 - self.zoom)
-        elif event.key == pygame.K_F1:
-            self.type = 'map'
-        elif event.key == pygame.K_F2:
-            self.type = 'sat'
-        elif event.key == pygame.K_F3:
-            self.type = 'skl'
-        elif event.key == pygame.K_F4:
-            self.type = 'trf'
+        if event.type == pygame.KEYDOWN:
+            # event handler
+            if event.key == pygame.K_PAGEUP:
+                self.scale(1)
+            elif event.key == pygame.K_PAGEDOWN:
+                self.scale(-1)
+            elif event.key == pygame.K_HOME:
+                self.set_spot(self.spot, focus=True)
+            elif event.key == pygame.K_DELETE:
+                self.set_spot(None)
+            elif event.key == pygame.K_UP:
+                self.lat += Map.dlat * pow(2, 15 - self.zoom)
+            elif event.key == pygame.K_DOWN:
+                self.lat -= Map.dlat * pow(2, 15 - self.zoom)
+            elif event.key == pygame.K_RIGHT:
+                self.lon += Map.dlon * pow(2, 15 - self.zoom)
+            elif event.key == pygame.K_LEFT:
+                self.lon -= Map.dlon * pow(2, 15 - self.zoom)
+            elif event.key == pygame.K_F1:
+                self.type = 'map'
+            elif event.key == pygame.K_F2:
+                self.type = 'sat'
+            elif event.key == pygame.K_F3:
+                self.type = 'skl'
+            elif event.key == pygame.K_F4:
+                self.type = 'trf'
 
-        if self.lon > 180:
-            self.lon -= 360
-        elif self.lon < -180:
-            self.lon += 360
+        if self.lon > 90:
+            self.lon += 180
+        elif self.lon < -90:
+            self.lon += 180
         if self.lat > 90:
-            self.lat -= 180
+            self.lat += -180
         elif self.lat < -90:
             self.lat += 180
 
@@ -114,39 +119,46 @@ class Map(pygame.sprite.Sprite):
 
 
 class MapSpot:
-    def __init__(self, point=None):
-        self.info = dict()
-        self.point = point
+    def __init__(self):
+        self.point = None
 
         self.organization = None
         self.toponym = None
-        self.address = None
-        self.postcode = None
-
-        if point:
-            self.find_toponym(geocode=','.join(map(str, self.point)))
-            self.find_organization(text=','.join(map(str, self.point)))
-
-    def find_organization(self, **kwargs):
-        try:
-            self.organization = request.geosearch(**kwargs)[0]
-        except IndexError:
-            print('No organizations found')
-        else:
-            if not self.point:
-                self.point = self.organization['geometry']['coordinates']
-            if not self.address:
-                self.address = self.organization['properties']['CompanyMetaData'].get('address')
 
     def find_toponym(self, **kwargs):
         try:
             self.toponym = request.geocoder(**kwargs)[0]
         except IndexError:
-            print('No toponyms found')
+            return False
         else:
             if not self.point:
                 self.point = [float(i) for i in self.toponym['Point']['pos'].split()]
-            if not self.address:
-                self.address = self.toponym['metaDataProperty']['GeocoderMetaData'].get('Address')['formatted']
-            if not self.postcode:
-                self.postcode = self.toponym['metaDataProperty']['GeocoderMetaData'].get('Address').get('postal_code')
+            return True
+
+    def find_organization(self, **kwargs):
+        try:
+            self.organization = request.geosearch(**kwargs)[0]
+        except IndexError:
+            return False
+        else:
+            if not self.point:
+                self.point = self.organization['geometry']['coordinates']
+            return True
+
+
+def lonlat_distance(a, b):
+
+    degree_to_meters_factor = 111000
+    a_lon, a_lat = a
+    b_lon, b_lat = b
+
+    radians_lattitude = radians((a_lat + b_lat) / 2.)
+    lat_lon_factor = cos(radians_lattitude)
+
+    dx = abs(a_lon - b_lon) * degree_to_meters_factor * lat_lon_factor
+    dy = abs(a_lat - b_lat) * degree_to_meters_factor
+
+    distance = sqrt(dx * dx + dy * dy)
+
+    return distance
+

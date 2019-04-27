@@ -70,7 +70,10 @@ class PInterface(pygame.sprite.Group):
 
 class PLineWidgetTemplate(pygame.sprite.Sprite):
     def __init__(self, text, rect=None, bg_color=(255, 255, 255), interface=None):
-        super().__init__(interface)
+        if interface is not None:
+            super().__init__(interface)
+        else:
+            super().__init__()
 
         self.font = pygame.font.Font(None, 28)
         self.text = text
@@ -133,6 +136,7 @@ class PLineEdit(PLineWidgetTemplate):
     def __init__(self, placeholder='', rect=(150, 24), bg_color=(214, 214, 214), interface=None):
         self.active = False
         super().__init__(placeholder, rect=rect, bg_color=bg_color, interface=interface)
+
         self.set_margin(7, 1)
 
     def switch(self):
@@ -178,6 +182,9 @@ class PButton(PLineWidgetTemplate):
 
     def set_color(self, color):
         super().set_color(color)
+        hsva = self.bg_color.hsva
+        self.s_color = pygame.Color(0, 0, 0)
+        self.s_color.hsva = (hsva[0], hsva[1], hsva[2] - 30, hsva[3])
 
     def update(self):
         if self.pressed:
@@ -193,7 +200,10 @@ class PCheckbox(pygame.sprite.Sprite):
     itself = 'PCheckbox'
 
     def __init__(self, rect=(15, 15), bg_color=(255, 0, 105), s_color=None, interface=None):
-        super().__init__(interface)
+        if interface is not None:
+            super().__init__(interface)
+        else:
+            super().__init__()
 
         self.bg_color = pygame.Color(*bg_color)
         self.margin_x = 0
@@ -238,7 +248,10 @@ class PCustomCheckbox(pygame.sprite.Sprite):
     itself = 'PCheckbox'
 
     def __init__(self, images, interface=None):
-        super().__init__(interface)
+        if interface is not None:
+            super().__init__(interface)
+        else:
+            super().__init__()
 
         self.images = images
 
