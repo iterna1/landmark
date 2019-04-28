@@ -3,6 +3,7 @@
 # библиотеки:
   - pip install Wikipedia-API
   - pip install requests
+  - pip install flask
   - pip install pygame
   - pip install SpeechRecognition
   - pip install pyttsx3
