@@ -9,37 +9,50 @@
 			font-size: 45px;
 		}
 
-		.btn{
-			width: 8%;
-			font-size: 24px;
-			margin-left: 20px;
+		.tab {
+		    margin-left: 40px;
 		}
 
-		 .h3{
-			padding-left:  20px;
-			padding-bottom: -15px;
+		.btn{
+			text-decoration: None;
+		}
+
+		.a {
+		    text-decoration: None;
 		}
 
 		body p{
 			margin-bottom: 35px;
-
 		}
+
 	</style>
 
-	<title>Index</title>
+	<title>Info</title>
   </head>
 
   <body>
-	<p class="info"> Information </p>
+	<p class="info"><b> Information </b></p>
 
 	{% for title in links%}
+    <br>
 	<p>
-		<h1 class="h3"> {{ title }} </h1>
-		<a href="{{ links[title] }}">
-		<button class="btn"> privet </button>
-		</a>
-	</p>
+    <h1> {{ title }} </h1>
+    <p>
+    <h3 class="tab">Raw response information</h3>
+    <span class="tab"><span class="tab">
+        {{ links[title][0] }}
+    </span></span>
+
+    <span class="tab">
+        {% if links[title][1] %}
+        <a class="a" href="{{ links[title][1] }}">
+        <h2 class="tab"><button class="btn"><b>Wiki page</b></button></h2>
+        </a>
+        {% endif %}
+    </span>
+    <br>
   	{% endfor %}
+
   </body>
 
 </html>

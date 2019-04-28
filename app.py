@@ -1,6 +1,7 @@
 import requests
 import pygame
 import sys
+import os
 
 from webbrowser import open as openweb
 
@@ -11,6 +12,10 @@ from speaker import Jarvis
 
 def terminate():
     mp.sprite.remove_files()
+    try:
+        os.remove('templates/info.html')
+    except FileNotFoundError:
+        pass
     pygame.quit()
     sys.exit(1)
 
@@ -20,23 +25,30 @@ def dialog_window():
 
     window = pygame.sprite.Sprite()
     window.itself = None
-    window.image = pygame.Surface((300, 225))
+    window.image = pygame.Surface((300, 150))
     window.image.fill((255, 204, 0))
-    window.rect = (150, 112, 300, 225)
+    window.rect = (150, 205, 300, 150)
+    pygame.draw.rect(window.image, (184, 130, 31), (0, 0, 300, 150), 5)
     dialog.add(window)
 
-    more_information = PButton('More info', rect=(135, 50), bg_color=(0, 51, 255), interface=dialog)
-    more_information.set_font('data/font.ttf', 20)
-    more_information.set_margin(10, 14)
+    quest = PLabel('More information?', rect=(280, 35), bg_color=(255, 204, 0), interface=dialog)
+    quest.set_font('data/font.ttf', 22)
+    quest.set_margin(20, 0)
+    quest.move(160, 240)
+    quest.update()
+
+    more_information = PButton('Yes', rect=(135, 50), bg_color=(0, 51, 255), interface=dialog)
+    more_information.set_font('data/font.ttf', 25)
+    more_information.set_margin(40, 14)
     more_information.set_color((255, 51, 0))
-    more_information.move(305, 277)
+    more_information.move(305, 295)
     more_information.update()
 
-    no_thanks = PButton('No, thanks', rect=(135, 50), bg_color=(255, 51, 0), interface=dialog)
-    no_thanks.set_font('data/font.ttf', 20)
-    no_thanks.set_margin(5, 14)
+    no_thanks = PButton('No', rect=(135, 50), bg_color=(255, 51, 0), interface=dialog)
+    no_thanks.set_font('data/font.ttf', 25)
+    no_thanks.set_margin(50, 14)
     no_thanks.set_color((0, 51, 255))
-    no_thanks.move(160, 277)
+    no_thanks.move(160, 295)
     no_thanks.update()
 
     while True:
@@ -145,7 +157,7 @@ def mainloop():
                 spot = MapSpot()
 
                 if api_switcher.checked:
-                    spot.find_organization(text=request_text)
+                    spot.find_organization(text=request_text, type='biz')
                 else:
                     spot.find_toponym(geocode=request_text)
                 if spot.point:
@@ -196,8 +208,8 @@ def mainloop():
                                                 json={'api': 'geocoder', 'response': mp.sprite.spot.toponym})
                     elif mp.sprite.spot.organization:
                         response = requests.get('http://localhost:8080/index',
-                                                json={'api': 'geocoder', 'response': mp.sprite.spot.organization})
-                    with open('templates/info.html', 'w') as file:
+                                                json={'api': 'geosearch', 'response': mp.sprite.spot.organization})
+                    with open('templates/info.html', 'w', encoding='utf-8') as file:
                         file.write(response.text)
                     openweb('http://localhost:8080/information')
 

@@ -81,37 +81,30 @@ class Map(pygame.sprite.Sprite):
 
             elif event.key == pygame.K_UP:
                 dlat = Map.dlat * pow(2, 15 - self.zoom)
-                if self.lat + dlat <= 90:
-                    self.lat += dlat
-                else:
-                    self.lat = 90
+                self.lat += dlat
             elif event.key == pygame.K_DOWN:
                 dlat = Map.dlat * pow(2, 15 - self.zoom)
-                if self.lat + dlat >= -90:
-                    self.lat -= dlat
-                else:
-                    self.lat = -90
+                self.lat -= dlat
             elif event.key == pygame.K_RIGHT:
                 dlon = Map.dlon * pow(2, 15 - self.zoom)
-                if self.lon + dlon <= 180:
-                    self.lon += dlon
-                else:
-                    self.lon = 180
+                self.lon += dlon
             elif event.key == pygame.K_LEFT:
                 dlon = Map.dlon * pow(2, 15 - self.zoom)
-                if self.lon + dlon >= -180:
-                    self.lon -= dlon
-                else:
-                    self.lon = -180
+                self.lon -= dlon
 
             elif event.key == pygame.K_F1:
                 self.type = 'map'
             elif event.key == pygame.K_F2:
                 self.type = 'sat'
-            elif event.key == pygame.K_F3:
-                self.type = 'skl'
-            elif event.key == pygame.K_F4:
-                self.type = 'trf'
+
+        if self.lon >= 180:
+            self.lon -= 360
+        elif self.lon <= -180:
+            self.lon += 360
+        if self.lat >= 90:
+            self.lat = 60
+        elif self.lat <= -90:
+            self.lat = -60
 
         # update map image
         self.update_image()
