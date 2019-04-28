@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+	<style type="text/css">
+		.info{
+			font-size: 45px;
+		}
+
+		.btn{
+			width: 8%;
+			font-size: 24px;
+			margin-left: 20px;
+		}
+
+		 .h3{
+			padding-left:  20px;
+			padding-bottom: -15px;
+		}
+
+		body p{
+			margin-bottom: 35px;
+
+		}
+	</style>
+
+	<title>Index</title>
+  </head>
+
+  <body>
+	<p class="info"> Information </p>
+
+	{% for title in links%}
+	<p>
+		<h1 class="h3"> {{ title }} </h1>
+		<a href="{{ links[title] }}">
+		<button class="btn"> privet </button>
+		</a>
+	</p>
+  	{% endfor %}
+  </body>
+
+</html>

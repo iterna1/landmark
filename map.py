@@ -78,14 +78,32 @@ class Map(pygame.sprite.Sprite):
                 self.set_spot(self.spot, focus=True)
             elif event.key == pygame.K_DELETE:
                 self.set_spot(None)
+
             elif event.key == pygame.K_UP:
-                self.lat += Map.dlat * pow(2, 15 - self.zoom)
+                dlat = Map.dlat * pow(2, 15 - self.zoom)
+                if self.lat + dlat <= 90:
+                    self.lat += dlat
+                else:
+                    self.lat = 90
             elif event.key == pygame.K_DOWN:
-                self.lat -= Map.dlat * pow(2, 15 - self.zoom)
+                dlat = Map.dlat * pow(2, 15 - self.zoom)
+                if self.lat + dlat >= -90:
+                    self.lat -= dlat
+                else:
+                    self.lat = -90
             elif event.key == pygame.K_RIGHT:
-                self.lon += Map.dlon * pow(2, 15 - self.zoom)
+                dlon = Map.dlon * pow(2, 15 - self.zoom)
+                if self.lon + dlon <= 180:
+                    self.lon += dlon
+                else:
+                    self.lon = 180
             elif event.key == pygame.K_LEFT:
-                self.lon -= Map.dlon * pow(2, 15 - self.zoom)
+                dlon = Map.dlon * pow(2, 15 - self.zoom)
+                if self.lon + dlon >= -180:
+                    self.lon -= dlon
+                else:
+                    self.lon = -180
+
             elif event.key == pygame.K_F1:
                 self.type = 'map'
             elif event.key == pygame.K_F2:
@@ -95,17 +113,15 @@ class Map(pygame.sprite.Sprite):
             elif event.key == pygame.K_F4:
                 self.type = 'trf'
 
-        if self.lon > 90:
-            self.lon += 180
-        elif self.lon < -90:
-            self.lon += 180
-        if self.lat > 90:
-            self.lat += -180
-        elif self.lat < -90:
-            self.lat += 180
-
         # update map image
         self.update_image()
+
+    def geo_rect(self):
+        top_left = self.xy_into_ll((0, 55))
+        top_right = self.xy_into_ll((600, 55))
+        bottom_left = self.xy_into_ll((0, 505))
+        bottom_right = self.xy_into_ll((600, 505))
+        return [top_left, top_right, bottom_left, bottom_right]
 
     def remove_files(self):
         try:
@@ -154,7 +170,7 @@ def lonlat_distance(a, b):
     a_lon, a_lat = a
     b_lon, b_lat = b
 
-    radians_lattitude = radians((a_lat + b_lat) / 2.)
+    radians_lattitude = radians((a_lat + b_lat) / 2)
     lat_lon_factor = cos(radians_lattitude)
 
     dx = abs(a_lon - b_lon) * degree_to_meters_factor * lat_lon_factor

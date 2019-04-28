@@ -1,4 +1,6 @@
+import requests
 import pygame
+import sys
 
 from webbrowser import open as openweb
 
@@ -7,13 +9,61 @@ from map import Map, MapSpot, lonlat_distance
 from speaker import Jarvis
 
 
+def terminate():
+    mp.sprite.remove_files()
+    pygame.quit()
+    sys.exit(1)
+
+
+def dialog_window():
+    dialog = PInterface()
+
+    window = pygame.sprite.Sprite()
+    window.itself = None
+    window.image = pygame.Surface((300, 225))
+    window.image.fill((255, 204, 0))
+    window.rect = (150, 112, 300, 225)
+    dialog.add(window)
+
+    more_information = PButton('More info', rect=(135, 50), bg_color=(0, 51, 255), interface=dialog)
+    more_information.set_font('data/font.ttf', 20)
+    more_information.set_margin(10, 14)
+    more_information.set_color((255, 51, 0))
+    more_information.move(305, 277)
+    more_information.update()
+
+    no_thanks = PButton('No, thanks', rect=(135, 50), bg_color=(255, 51, 0), interface=dialog)
+    no_thanks.set_font('data/font.ttf', 20)
+    no_thanks.set_margin(5, 14)
+    no_thanks.set_color((0, 51, 255))
+    no_thanks.move(160, 277)
+    no_thanks.update()
+
+    while True:
+        events = pygame.event.get()
+        if pygame.QUIT in [e.type for e in events]:
+            terminate()
+
+        buttons = pygame.mouse.get_pressed()
+        keys = pygame.key.get_pressed()
+
+        dialog.update(events, buttons, keys)
+        dialog.draw(screen)
+        pygame.display.flip()
+
+        if more_information.pressed:
+            return True
+        elif no_thanks.pressed:
+            return False
+        clock.tick(20)
+
+
 def update_screen():
     screen.fill((0, 51, 255))
     pygame.draw.rect(screen, (255, 204, 0), (0, 0, 600, 55))
 
     pygame.draw.line(screen, (184, 130, 31), (95, 0), (95, 55), 5)
     pygame.draw.line(screen, (184, 130, 31), (180, 0), (180, 55), 5)
-    pygame.draw.line(screen, (184, 130, 31), (285, 0), (285, 55), 5)
     pygame.draw.line(screen, (184, 130, 31), (380, 0), (380, 55), 5)
     pygame.draw.line(screen, (184, 130, 31), (500, 0), (500, 55), 5)
     pygame.draw.line(screen, (184, 130, 31), (0, 55), (600, 55), 5)
@@ -21,12 +71,11 @@ def update_screen():
 
 
 def mainloop():
-    run = True
-    while run:
+    while True:
         events = pygame.event.get()
         for event in events:
             if event.type == pygame.QUIT:
-                run = False
+                terminate()
             elif event.type == pygame.KEYDOWN and not search_field.active:
                 mp.update(event)
             elif event.type == pygame.MOUSEBUTTONDOWN and mp.sprite.rect.collidepoint(event.pos):
@@ -37,9 +86,9 @@ def mainloop():
                     lonlat = '%f,%f' % point
                     spot.find_toponym(geocode=lonlat, ll=lonlat)
 
-                    if it_switcher.checked:
-                        it_switcher.switch()
-                        it_switcher.update()
+                    if api_switcher.checked:
+                        api_switcher.switch()
+                        api_switcher.update()
 
                     if spot.point and lonlat_distance(spot.point, point) <= 50:
                         mp.sprite.set_spot(spot, focus=False)
@@ -79,7 +128,7 @@ def mainloop():
             if request_text:
                 spot = MapSpot()
 
-                if it_switcher.checked:
+                if api_switcher.checked:
                     spot.find_organization(text=request_text, type='biz')
                 else:
                     spot.find_toponym(geocode=request_text)
@@ -95,7 +144,7 @@ def mainloop():
             if request_text:
                 spot = MapSpot()
 
-                if it_switcher.checked:
+                if api_switcher.checked:
                     spot.find_organization(text=request_text)
                 else:
                     spot.find_toponym(geocode=request_text)
@@ -108,27 +157,54 @@ def mainloop():
 
         # on reset button click
         elif reset_button.pressed:
+            record_button.pressed = False
+            record_button.update()
             mp.sprite.set_spot(None)
             mp.sprite.update_image()
 
         # on home button click
         elif home_button.pressed:
+            home_button.pressed = False
+            home_button.update()
             mp.sprite.set_spot(mp.sprite.spot, focus=True)
             mp.sprite.update_image()
 
+        # on help button click
+        elif help_button.pressed:
+            help_button.pressed = False
+            help_button.update()
+            openweb('http://localhost:8080/help')
+
+        # on info button click
         elif info_button.pressed:
+            info_button.pressed = False
+            info_button.update()
             if mp.sprite.spot:
+                text = 'No address found.'
                 if mp.sprite.spot.toponym:
-                    wiki_request = mp.sprite.spot.toponym['metaDataProperty']['GeocoderMetaData']['text']
-                    openweb('http://localhost:8080/%s' % wiki_request)
+                    text_base = mp.sprite.spot.toponym
+                    text = text_base['metaDataProperty']['GeocoderMetaData']['Address']['formatted']
+                elif mp.sprite.spot.organization:
+                    text_base = mp.sprite.spot.organization
+                    text = text_base['properties']['CompanyMetaData']['address']
+                jarvis.say(text)
+
+                if dialog_window():
+                    response = None
+                    if mp.sprite.spot.toponym:
+                        response = requests.get('http://localhost:8080/index',
+                                                json={'api': 'geocoder', 'response': mp.sprite.spot.toponym})
+                    elif mp.sprite.spot.organization:
+                        response = requests.get('http://localhost:8080/index',
+                                                json={'api': 'geocoder', 'response': mp.sprite.spot.organization})
+                    with open('templates/info.html', 'w') as file:
+                        file.write(response.text)
+                    openweb('http://localhost:8080/information')
 
         clock.tick(20)
 
-    mp.sprite.remove_files()
-    pygame.quit()
 
-
-if __name__ == '__main__':
+if __name__ == 'app':
     pygame.init()
     clock = pygame.time.Clock()
     screen = pygame.display.set_mode((600, 560))
@@ -192,33 +268,19 @@ if __name__ == '__main__':
     im_switcher.move(140, 10)
     im_switcher.update()
 
-    # label for output mode switcher
-    om_label = PLabel('Om:', rect=(40, 35), bg_color=(255, 204, 0), interface=interface)
-    om_label.set_font('data/font.ttf', 22)
-    om_label.set_margin(0, 8)
-    om_label.move(195, 10)
-    om_label.update()
+    # label for api switcher
+    api_label = PLabel('Api:', rect=(45, 35), bg_color=(255, 204, 0), interface=interface)
+    api_label.set_font('data/font.ttf', 22)
+    api_label.set_margin(0, 8)
+    api_label.move(195, 10)
+    api_label.update()
 
-    # output mode switcher
-    images = [pygame.transform.scale(pygame.image.load(i).convert_alpha(), (40, 40))
-              for i in ('data/om_1.png', 'data/om_2.png')]
-    om_switcher = PCustomCheckbox(images, interface=interface)
-    om_switcher.move(235, 10)
-    om_switcher.update()
-
-    # label for information type switcher
-    it_label = PLabel('IT:', rect=(35, 35), bg_color=(255, 204, 0), interface=interface)
-    it_label.set_font('data/font.ttf', 22)
-    it_label.set_margin(0, 8)
-    it_label.move(300, 10)
-    it_label.update()
-
-    # information type switcher
-    font = pygame.font.Font('data/font.ttf', 30)
-    images = [font.render('A', True, (0, 51, 255)), font.render('O', True, (0, 51, 255))]
-    it_switcher = PCustomCheckbox(images, interface=interface)
-    it_switcher.move(345, 15)
-    it_switcher.update()
+    # api switcher
+    font = pygame.font.Font('data/font.ttf', 18)
+    images = [font.render('geocoder', True, (0, 51, 255)), font.render('geosearch', True, (0, 51, 255))]
+    api_switcher = PCustomCheckbox(images, interface=interface)
+    api_switcher.move(248, 20)
+    api_switcher.update()
 
     # reset button
     reset_button = PButton('Re', rect=(40, 35), bg_color=(255, 51, 0), interface=interface)

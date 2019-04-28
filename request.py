@@ -28,6 +28,7 @@ def static_maps(**kwargs):
 def geocoder(**kwargs):
     api_server = 'https://geocode-maps.yandex.ru/1.x'
     kwargs['format'] = 'json'
+    kwargs['lang'] = 'en_US'
 
     response = requests.get(api_server, params=kwargs)
     if not response:
@@ -48,7 +49,7 @@ def geosearch(**kwargs):
     api_server = 'https://search-maps.yandex.ru/v1/'
     api_key = 'dda3ddba-c9ea-4ead-9010-f43fbc15c6e3'
 
-    kwargs['lang'] = 'ru_RU'
+    kwargs['lang'] = 'en_US'
     kwargs['apikey'] = api_key
 
     response = requests.get(api_server, params=kwargs)
