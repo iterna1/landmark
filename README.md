@@ -7,6 +7,7 @@
   - pip install pygame
   - pip install SpeechRecognition
   - pip install pyttsx3
+  - pip install pywin32
  
 # как пользоваться
   информация об использовании есть в самом приложении (или в файле templates/manual.html)
